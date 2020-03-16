@@ -432,5 +432,139 @@ SHOULD be valid with cash.amount atribute (invalid selected product is discarded
     + 'CANCELLED'
 + workflowSteps (WorkflowStep,  optional) - Collection of application process actions available for current application state.
 
+## Error (object)
++ code: `BAD_REQUEST` (string, required) - Unique internal error code
++ message: `Bad request` (string, required) - Human readable error description (non-localized)
++ severity (enum, required)
+    + `ERROR` - Critical error, execution cannot continue. This MUST be indicated also by appropriate HTTP status code
+    + `WARN` - Non-critical error, execution can continue but further user interaction is advisable. This MIGHT be indicated also by appropriate HTTP status code
+    + `INFO` - Information only, execution can continue without user interaction
++ attribute: `Client.addresses[1].streetNumber` (string, optional) - JSON path of request attribute that caused the error (if applicable)
++ ticketId: `UAT1:AMS:20160516-091658.450:45e4` (string, optional) - Internal ticket ID, used for error backtracking
 
-:[Data Structures Common](common/src/includes/data-structures-common.apib)
+## Errors (object)
++ errors (array[Error], fixed-type, required) - Array with errors
+
+## OTPErrors (Errors)
++ blockedUntil: `2017-01-18T10:34:44+01:00` (string, optional) - requested operation is blocked until specified time
+
+## PagingInfo (object)
++ itemsPerPage: 10 (number, required) - number of items per page
++ nextPage: `transactions?sort=category&limit=10&after=30` (string, optional) - request to retrieve next page, if it exists and can be unambiguously specified
++ prevPage: `transactions?sort=category&limit=10&before=21` (string, optional) - request to retrieve previous page, if it exists and can be unambiguously specified
+
+
+## Amount (object)
++ `value`: 13300 (number, required) - Amount in minor units (13300 represents 133) [ISO 4217](https://en.wikipedia.org/wiki/ISO_4217)
++ `currency`: `CZK` (string, required) - Amount currency [ISO 4217](https://en.wikipedia.org/wiki/ISO_4217). Only local currency is allowed (CZK in Czech Republic and EUR in Slovakia).
+
+## VatAmount (object)
+Financial amount with VAT rate.
+
+### Properties
++ `value`: 14950 (number, required) - Amount in minor units (14950 represents 149,50) [ISO 4217](https://en.wikipedia.org/wiki/ISO_4217). MUST be 0 or greater.
++ `currency`: `CZK` (string, required) - Amount currency [ISO 4217](https://en.wikipedia.org/wiki/ISO_4217). Only local currency is allowed (CZK in Czech Republic and EUR in Slovakia).
++ `vatRate`: 15 (number, required) - VAT rate as natural number (15 represents 15% rate)
+
+## File (object)
++ `filename`: `iphone6s.jpg` (string, required) - File name.
++ One Of
+    + `url`: `https://i.cdn.nrholding.net/32523771/2000/2000/iphone6s.jpg` (string, required) - File URL (full).
+    + `content`: `RmlsZSBjb250ZW50cy4gwq9cXyjjg4QpXy/Crw==` (string, required) - File content (Base64 encoded, maximum size of encoded string is 500kB)
+
+
+## EmptyRE (object)
+
+## KeyValue (object)
++ `key`: `property` (string, required) - Key
++ `value`: `value` (string, required) - Value
+
+## BankAccount (object)
++ type (enum, required) - Account type
+    + `IBAN`
+    + `NATIONAL`
++ One Of
+    + iban (AccountIBAN, required) - Bank account number in IBAN format
+    + national (AccountNational, required) - Bank account number in national format.
+
+## AccountIBAN (object)
++ iban: `CZ6508000000192000145399` (string, required) - Account number in IBAN format
+
+## AccountNational (object)
++ prefix: `000000` (string, optional) - Account number prefix. For domestic accounts, this will be specified in national format.
++ accountNumber: `1235335010` (string, required) - Account number. For domestic accounts, this will be specified in national format.
++ bankCode: `3030` (string, required) - For domestic accounts, bank code in national format
+
+## PhoneNumber (object)
++ number: `+420123456789` (string, required) - Phone number (including country code)
+
+## Email (object)
++ address: `darth.vader@empire.sw` (string, required) - Email address
+
+
+## PartnerLogin (object)
+Partner login credentials
+
+### Properties
++ `username`: `eShop` (string, required) - Partner username
++ `password`: `eShopSecretPassword` (string, required) - Partner secret password
+
+## PartnerLoginResult (object)
+Authenticated partner access token
+
+### Properties
++ `accessToken`: `TokenForPartnerTokenForPartnerTokenForPartnerTokenForPartner` (string, required) - Access token
++ `expiresIn`: 7200 (number) - Token validity remaining time (in seconds)
+
+## AgentLoginRequest (object)
++ `clientId`: `MyCoolApplication` (string, required) - Id of consumer (typically application you are login for)
++ `authorizations` (array[AgentLoginAuthorization], fixed-type, required) - Array of authorization request.
+
+## AgentLoginAuthorization (object)
++ `type` (enum, required) - Type of authorization requests
+    `CREDENTIALS` - Authorization with credentials
++ `credentials` (Credentials, required) - Data for `CREDENTIALS` type of authorization
+
+## Credentials (object)
++ `username`: `tester` (string, required) - Agent's username
++ `password`: `heslo123` (string, required) - Agent's password
+
+## AgentLoginResponse (object)
++ token (Token, required)
+
+## Token (object)
++ accessToken: `TokenForPartnerTokenForPartnerTokenForPartnerTokenForPartner` (string, required) - Access token
++ tokenType: `bearer` (string, required)
++ expiresIn: 43200 (number) - Token validity remaining time (in seconds)
+
+
+## AgentSetPasswordRequest (object)
++ `password`: `AgentSecretPassword` (string, required) - New password for agent
++ `authorizations` (array[AgentLoginAuthorization], fixed-type, required) - Array of authorization request
+
+
+## TokenCodeRequest (object)
++ `grant_type` (enum, required) - Grant flow type, only `authorization_code` and `refresh_token` is supported
+    + `authorization_code` - use to exchange code for access token
+    + `refresh_token` - can be used to get new access token instead of forcing user to login again
++ `client_id`: `my_app_id` (string, required) - client_id parameter of your application, received at application registration
++ `client_secret`: `my_app_secret` (string, required) - client_secret parameter of your application, received at application registration
++ One Of
+    + `code`: `12254a1124` (string, required) - Authorization code, received from authorization server
+    + `refresh_token`: `12254a1124` (string, required) - Refresh token, received from authorization server
+
+## TokenResponse (object)
++ `refresh_token`: `7dbadd74c434439db4fc9b2bbf8cabb3` (string, optional) - refresh token, if supported
++ `token_type`: `bearer` (string, required) - token type. Always "bearer".
++ `access_token`: `ccafe62cbce645ce95b2acce839f4acc` (string, required) - access token, to be included in API request
++ `expires_in`: 7200 (number, required) - access token validity, in seconds
+
+
+## AgentAccount (object)
++ name: `Jiří` (string, required) - User's first name.
++ lastName: `Novák` (string, required) - User's last name.
++ salesrooms (array[Salesroom], fixed-type, optional) - List of salesrooms for which user is registered.
+
+## Salesroom (object)
++ code: `007` (string, required) - Salesroom's code
++ name: `Testovací prodejna - Londýnské náměstí, Brno` (string, optional) - Salesroom's name
