@@ -1,80 +1,436 @@
 FORMAT: 1A
-HOST: https://polls.apiblueprint.org/
+HOST: https://api.homecredit.cz
 
-# cs-financingv2future
+# Home Credit - Partner API - FUTURE
+API documentation for Home Credit API for partners.
 
-Polls is a simple API allowing consumers to view polls and vote in them. Test
- 
-## Questions Collection [/questions]
+In case of any question, please contact our integration department (integrace_eshop@homecredit.cz).
 
-### List All Questions [GET]
+> **IMPORTANT NOTE:** Resource calls made from **Slovakia** MUST use appropriate dedicated `.sk` endpoints. E.g. `https://api.homecredit.sk/financning/v2/applications`
 
-+ Response 200 (application/json)
 
-        [
-            {
-                "question": "Favourite programming language?",
-                "published_at": "2015-08-05T08:40:51.620Z",
-                "choices": [
-                    {
-                        "choice": "Swift",
-                        "votes": 2048
-                    }, {
-                        "choice": "Python",
-                        "votes": 1024
-                    }, {
-                        "choice": "Objective-C",
-                        "votes": 512
-                    }, {
-                        "choice": "Ruby",
-                        "votes": 256
-                    }
-                ]
-            }
-        ]
+## Getting started
+This online document describes Home Credit (HC) API for partners - the means for partner through which they can offer their customers the benefits of one of Home Credit's payment methods or products.
 
-### Create a New Question [POST]
+The aim of here described services is to allow customers the smooth running through the process of an online purchase or loan arrangement. The services that allow achieving this goal are divided into the following groups:
 
-You may create your own question using this action. It takes a JSON
-object containing a question and a collection of answers in the
-form of choices.
+| Group of services                  | Purpose                                                                                                                                                      |
+| ---                                | ---                                                                                                                                                          |
+| Security                           | Security rules and principles                                                                                                                                |
+| Application resources              | Resources that allows processing of *application* during its whole life cycle                                                                                |
+| Merchantsite resources             | Resources that should be developed and exposed by a partner to allow HC asynchronously inform it about important changes regarding particular *applications* |
 
-+ Request (application/json)
+### Basic implementation
+Basic and minimum way how to implement HCO API is to at least implement:
+1. [Login](#reference/security/login-partner)
+    - You must be authorized to be able to access to the most resources
+1. [Create application](#reference/application-resources/create-application)
+    - When you collect necessary data of a customer and financed subject (order etc.), call this resource to start the loan approval process by creating an `application`. `Application` itself and its ID are essential for a successful process completion.
+1. Redirect handlers.
+    - Special URLs for customers that shows payment success or rejection (more info [here](#introduction/getting-started/parameters-added-to-your-return-urls)).
+1. [Application notification](#reference/merchantsite-resources/application-notification)
+    - This endpoint has to be exposed on your side to allow HC back-end to asynchronously notify you about the important changes regarding particular applications.
+1. For `application` with `order`: [Mark order items as shipped](#reference/application-resources/mark-order-items-as-shipped)
+    - HC does not start the process of financial compensation unless the `order` is marked as `SHIPPED`.
 
-        {
-            "question": "Favourite programming language?",
-            "choices": [
-                "Swift",
-                "Python",
-                "Objective-C",
-                "Ruby"
-            ]
-        }
+<!-- diagram minimální implementace -->
 
-+ Response 201 (application/json)
+<!-- stavový diagram žádosti / objednávky -->
 
-    + Headers
+It is necessary to fill in all attributes marked as 'required' in the request but filling optional parameters will result in better application approval rate. You should always consider to fill as many attributes as possible. Contact the sales support to find out which attributes correlate with approval rate the most.
 
-            Location: /questions/2
 
-    + Body
+## Naming conventions
+- we use camelCase for all object and attribute names
+- we use CAPITAL_UNDERSCORE for enum values
+- we use plural in resource names
 
-            {
-                "question": "Favourite programming language?",
-                "published_at": "2015-08-05T08:40:51.620Z",
-                "choices": [
-                    {
-                        "choice": "Swift",
-                        "votes": 0
-                    }, {
-                        "choice": "Python",
-                        "votes": 0
-                    }, {
-                        "choice": "Objective-C",
-                        "votes": 0
-                    }, {
-                        "choice": "Ruby",
-                        "votes": 0
-                    }
-                ]
-            }
+
+## Documentation principles
+- attributes in request/response object are optional, unless stated otherwise (`required` flag under attribute name)
+- required attribute in optional object means, that if optional object is specified, it must contain required attribute.
+- all values in request/response attributes are just examples, except for enum values - these are the only possible values for given attribute.
+
+
+:[Description](common/src/includes/description.apib)
+
+
+### Parameters added to your return URLs
+- During redirection of the customer from Home Credit's front-end back to partner's website (to one of the provided URLs - `approvedRedirectUrl`, `rejectedRedirectUrl`) there are some potentially useful information about a customer's outcome in Home Credit's front-end added:
+- `applicationId` (string) - HCO application identifier
+- `applicationStatus` (enum) – Application status
+- `orderNumber` (string) - E-shop's internal order number provided within API call of [Create application](#reference/application-resources/create-application) (if available)
+- `orderStatus` (enum) - Order status (if available)
+- `cashStatus` (enum) - Cash loan status (if available)
+- `withdrawal` (boolean) – True when the customer's purchase is financed directly from his already existing revolving loan; false when a new contract is being created (if available)
+- `downPayment` (number) – Value of down payment, usually set to 0 (minor units format is used - 100000 represents 1000, [ISO 4217](https://en.wikipedia.org/wiki/ISO_4217))
+- `checkSum` (string) – hashed message
+
+- e.g. `http://youreshop.cz?&applicationId=deb97dbd-cd18-4648-bc9d-f5d74f1d0776&applicationStatus=CONFIRMED&orderNumber=018884&orderStatus=TO_SHIP&downPayment=100000&checkSum=443E150D3406F6A8DC62C1DB224AFDD84FA9907071BB1AD9B2C7701031793662191501B26AADF3A31361341EA176C80B23D8A9A5E5B5219538289945FE0C20A7`
+
+
+
+:[Group Security](common/src/includes/security-login-partner.apib)
+
+
+# Group Application resources
+Services that allows processing of *application* during its whole lifecycle.
+
+## Create application [/financing/v2/applications]
+Elementary flow starts when customer either wants to use one of the Home Credit's payment method for financing his purchase made in partner e-shop or is interested in some Home Credit's product.
+
+
+Use `/financing/v2/applications` resource with properly filled request that contains at least following data
+- Order (or other product) details
+  - Total Price (including VAT)
+  - Order items (array, at least one item is required)
+    - Order item name
+    - Total price (all pieces, including VAT)
+  - Name of the original e-shop the purchase was made in (when you are intermediary)
+- Context information necessary for the continuation and completion of the process
+  - Channel type (always `ONLINE`)
+  - Channel data
+
+If the request was successfully processed, you receive HTTP status code 201 and `Application` object with at least following information in the response:
+- Application unique ID
+- Application status
+
+
+If the request contained `ApplicationRequest.financedSubject.order.number` and was **recognized as duplication**
+- and previously created `Application` is canceled (`Application.status = CANCELLED` and `Application.financedSubject.order.status = CANCELLED`), new `Application` is created, you receive HTTP status code 201 and `Application` object with information specified above (at least) in the response
+- and previously created `Application` is still new (i.e. without any recorded action by a client), no `Application` is created, you receive HTTP status code 200 and the `Application` object created during the first related successful resource call.
+- and previously created `Application` is neither canceled nor new anymore, you receive HTTP status code 422 with error code `DUPLICATE_ORDER_NUMBER`.
+
+In case of an error, you receive one of the following results:
+| Status code | Code                   | Explanation                                                                     |
+| ---         | ---                    | ---                                                                             |
+| 400         | INVALID_REQUEST        | Request was not well formatted (malformed request syntax, size too large, etc.) |
+| 422         | UNPROCESSABLE          | Request was well-formed but was unable to be followed due to semantic errors    |
+| 422         | DUPLICATE_ORDER_NUMBER | Creating of Application with duplicated Order number is not allowed             |
+| 500         | INTERNAL_SERVER_ERROR  | Unexpected condition was encountered and no more specific message is suitable   |
+
+
+### Create application [POST]
+Create new *application*
+
++ Request Example_VALID_REQUEST (application/json;charset=UTF-8)
+    + Attributes (ApplicationRequest)
+
++ Response 201(application/json;charset=UTF-8)
+
+        Application was created
+
+    + Attributes (ApplicationBase)
+
+
++ Request Example_REPEATED_VALID_REQUEST (application/json;charset=UTF-8)
+    + Attributes (ApplicationRequest)
+
++ Response 200(application/json;charset=UTF-8)
+
+        Application was created in the past (nothing changed)
+
+    + Attributes (ApplicationBase)
+
+
++ Request Example_BAD_REQUEST (application/json;charset=UTF-8)
+    + Attributes (ApplicationRequest)
+      + `financedSubject` (FinancedSubjectBase, required) - Subject of financing (for example Iphone purchase, loan for 20 000 CZK ...)
+        + `type`: `INVALID_TYPE` (enum, required) - Type of financed subject
+          + `ORDER`
+          + `CASH`
+
++ Response 400(application/json;charset=UTF-8)
+
+        There was an error processing request
+
+    + Attributes (Errors)
+
+
+## Mark order as shipped [/financing/v2/applications/{applicationId}/order/ship]
+When the whole *order* was shipped to the customer, use `/financing/v2/applications/{applicationId}/order/ship` resource where `{applicationId}` is the *application* ID you received in the response of `/financing/v2/applications` after its creation.
+
+Available for:
+| Application status | Order status |
+| ---                | ---          |
+| `CONFIRMED`        | `TO_SHIP`    |
+
+
+If the request was successfully processed, you receive HTTP status code 204
+
+  In other cases, you receive one of the following errors:
+  | Status code | Code                  | Explanation                                                                      |
+  | ---         | ---                   | ---                                                                              |
+  | 400         | INVALID_REQUEST       | Request was not well formatted (malformed request syntax, size too large, etc.)  |
+  | 404         | OBJECT_NOT_FOUND      | The requested resource could not be found                                        |
+  | 422         | NOT_SUPPORTED         | Resource has not supported status                                                |
+  | 422         | UNPROCESSABLE         | The request was well-formed but was unable to be followed due to semantic errors |
+  | 500         | INTERNAL_SERVER_ERROR | Unexpected condition was encountered and no more specific message is suitable    |
+
++ Parameters
+    + applicationId (string, required, `01-11b00a1ef1`)
+
+
+### Mark order as shipped [PUT]
+Mark order as shipped.
+
+System notification. The whole *order* was shipped to the customer. Based on partner's settings, application payment may be processed.
+
++ Response 204
+
++ Response 422(application/json;charset=UTF-8)
+        Status change can not be processed
+
+    + Attributes (Errors)
+
+
+# Group Merchantsite resources
+Services that should be developed and exposed by partner e-shops to allow HC asynchronously inform these partner e-shops about important changes regarding particular *applications* and *orders*
+
+> **ATTENTION:** This set of APIs is NOT exposed from HC. Instead, it should be developed by partner and accept calls specified below.
+
+
+## Application notification [{ApplicationRequest.originationContext.channel.online.notificationEndpoint}]
+We use this resource when there is a need to let you know about important changes within particular *application*. Namely in following situations:
+
+| Trigger                                                             | Corresponding `Application.status` | Corresponding `Application.financedSubject.order.status` | Expected reaction                                                      |
+| ---                                                                 | ---                                | ---                                                      |                                                                        |
+| Application was approved (approval process is proceeding correctly) | APPROVED                           | IN_PROCESS                                               | Do not cancel customer's order prematurely                             |
+| Application was rejected                                            | REJECTED                           | CANCELLED                                                | You should probably cancel respective order and release reserved goods |
+| Application was cancelled (before delivery)                         | CANCELLED                          | CANCELLED                                                | You should probably cancel respective order and release reserved goods |
+| Order to dispatch (we commit to finance customer's order)           | CONFIRMED                          | TO_SHIP                                                  | Dispatch the order to the customer                                     |
+| Application is going to be paid out                                 | CONFIRMED                          | PAID                                                     | Wait for us processing financial compensation with you                 |
+<!-- | Application was cancelled (after delivery)                          | CANCELLED              | TERMINATED                    | You should probably cancel respective order and process returning of the goods (if not already done so) |-->
+
+We fill the request with at least following information:
+- Application unique ID
+- Application status
+- Time of a triggering `Application.status` change
+- Notification sequence number
+- Notification dispatch time
+- Hashed message (check sum)
+
+<!--
+> USEFUL NOTE: If you come to a conclusion it has been taking us unusually long time to send you particular notification, do not hesitate to use `GET /financing/v2/applications/{applicationId}` resource (where `{applicationId}` is the application ID you received in the response of `/financing/v2/applications` after its creation) to directly find out information you seek.
+-->
+
+### Application notification [POST]
+Notify partner about changes in application.
+
++ Request (application/json;charset=UTF-8)
+    + Attributes (NotificationRequest)
+        + `notificationContent` (NotificationContent)
+            + `applicationStatus`: `CONFIRMED` (enum, required) - Status of the application
+              + `CREATED`
+              + `PRESCORED`
+              + `APPROVED`
+              + `VERIFICATION`
+              + `ALTERNATIVE`
+              + `CONFIRMED`
+              + `REJECTED`
+              + `CANCELLED`
+            + `orderStatus`: `TO_SHIP` (enum, optional) - Status of the Order
+              + `IN_PROCESS`
+              + `TO_SHIP`
+              + `SHIPPED`
+              + `CHECKING_DELIVERY`
+              + `DELIVERED`
+              + `PAID`
+              + `CANCELLED`
+              + `TERMINATED`
+
++ Response 204
+        Notification accepted
+
++ Response 400 (application/json;charset=UTF-8)
+        Can not process changes
+
+
+# Data Structures
+
+
+## ApplicationRequest(object)
++ customer (ApplicationCustomer, optional) - Customer data. If known, customer data MAY be included for smoother approval process.
++ originationContext (OriginationContextRequest, required) - Additional information about context of financing application origination (e.g. redirect URL back to e-shop, information about the seller that acquired the client, phonecall ID...)
++ financedSubject (FinancedSubjectBase, required) - Subject of financing (for example IPhone purchase, loan for 20 000 CZK ...)
+
+## ApplicationCustomer(object)
++ `firstName`: `John` (string, optional) -  Customer first (given) name. Must be paired with `lastName`. Required if `fullName` is empty. String values longer than 100 characters will be shortened to 100 characters.
++ `lastName`: `Newborn` (string, optional) - Customer last (family) name. Must be paired with `firstName`. Required if `fullName` is empty. String values longer than 100 characters will be shortened to 100 characters.
++ `fullName`: `Ing. John Newborn, Csc.` (string, optional) - Customer full name, including academical degrees and salutation. Required only if `firstName` and `lastName` are empty. Attribute `fullName` is parsed (and eventually shortened) into `firstName` and `lastName`; `fullName` is never returned in response.
++ `email`: `john.newborn@country.com` (string, optional) - E-mail address of customer. Must be valid email according to [RFC 2822](https://tools.ietf.org/html/rfc2822).
++ `phone`: `+420777123456` (string, optional) - Phone number with country code (including leading `+`)
++ `addresses` (array[Address], fixed-type, optional) - Addresses. Only `PERMANENT` and `CONTACT` types are allowed.
++ `tin`: `12333321` (string, optional) - Tax identification number (ICO). String values longer than 10 characters will be shortened to 10 characters.
++ ipAddress: `172.10.10.1` (string, optional) - IPv4 or IPv6 address of a customer. Optional but required for advanced implementation
++ fingerprintComponents (KeyValue, optional) - Fingerprints components. Optional but required for advanced implementation
++ identificationNumber: `890619/5723` (string, optional) - Client's identification number (actually birth number). MAY be filled if known. SHOULD consist only of digits and '/' character, other characters will be discard. After this transformation string values longer than 11 characters will be shortened to 11 characters.
++ extraData (ApplicationCustomerExtraData, optional) - Additional data, that may improve the approval probability.
+OPTIONAL
+
+## ApplicationCustomerExtraData(object)
++ transactionsNumber: 10 (number,  optional) - Historical count of customer's cash transactions made in partner's e-shop
++ cashlessTransactionsNumber: 5 (number,  optional) - Historical count of customer's cashless transactions made in partner's e-shop
++ transactionsSum (Amount,  optional) - Sum of all cash transactions made in partner's e-shop
++ cashlessTransactionsSum (Amount,  optional) - Sum of all cashless transactions made in partner's e-shop
++ latestTransactionDate: '2017-01-10' (string,  optional) - Newest transaction date on partner e-shop.
++ earliestTransactionDate: '2015-01-10' (string,  optional) - Oldest transaction date on partner e-shop
++ pageTotalTime: 2000 (number,  optional) - Total time spent on partners website (in seconds)
++ pageReviewsTime: 100 (string,  optional) - Total time spent on partners website in review and comments sections (in seconds)
++ cartItemsRemoved: 1 (number,  optional) - Total count of removed items form shopping basket during current shopping
++ itemsViewed: 35 (number,  optional) - Number of viewed pages with products
+
+
+## Address(object)
++ `city`: `Prague` (string, required) - City. String values longer than 100 characters will be shortened to 100 characters.
++ `streetAddress`: `Letenská` (string, required) - Street/city part. String values longer than 100 characters will be shortened to 100 characters.
++ `streetNumber`: `22` (string, required) - Street number. String values longer than 50 characters will be shortened to 50 characters.
++ `zip`: `140 00` (string, required) - Postal code. String values longer than 10 characters will be shortened to 10 characters.
++ `flags` (array[AddressFlag], fixed-type,  required) - Type of the address.
+
+## AddressFlag(enum)
++ `PERMANENT` - Permanent residential address
++ `CONTACT` - Contact address
+
+## SettingsLoanWallet(object)
++ preferredInstallment (Amount,  optional) - Preferred installment amount client would like to pay in monthly installment to pay his loan (amount should be rounded to hundreds CZK/ 5 EUR).
+OPTIONAL, if not provided, minimum installment amount would be used.
++ productCode: 'COCONL06' (string,  optional) - Product code (obtained from calculation result).
+SHOULD be valid with cash.amount atribute (invalid selected product is discarded; for example product does not exist or does not support requested amount).
+
+## CashBase(object)
++ amount (Amount, optional) - Preffered amount client's want to borrow. MAY be provided, if not provided, maximum possible amount would be offered to client.
++ financing (CashFinancing, optional) - Information about form of financing CASH application (for example Close-end Loan, Revolving Loan etc.). OPTIONAL.
+
+## CashFinancing(object)
++ type (enum, optional) - Financing type suitable for CASH application. If not provided, LOAN_WALLET type is used (by default).
+    + 'LOAN_WALLET'
++ One Of
+    + loanWallet (SettingsLoanWallet,  required) - Settings for LOAN_WALLET Financing type. REQUIRED for LOAN_WALLET financing type
+
+## FinancedSubjectBase(object)
++ One Of
+  + cash (CashBase, required) - Additional information about Cash requeirements. REQUIRED for CASH type of Financed subject
+  + order (OrderBase, required) - Information about client's purchase of goods. REQUIRED for ORDER type of Financed subject
+
+##  OrderBase(object)
++ number: '11111111' (string,  optional) - Identifier, specified by the partner (e-shop, POS shop, inetmediary). MAY be provided for easier identification of application on partner's side. MUST NOT be longer than 100 characters.
++ specificSymbol: '1122334455' (string,  optional) - Specific symbol (internal for partner) for reconciliation payment. MUST NOT be longer than 10 characters
++ variableSymbol: '1234567' (string,  optional) - Variable symbol (internal for e-shop) for reconciliation payment. MUST NOT be longer than 10 characters. If empty, `order.number` is used instead. If not provided or not usable (e.g. `order.number` contains only letters) Home Credit internal identifier is used.
++ totalPrice (Amount, required) - Total order amount, including VAT
++ preferredDownPayment (Amount, optional) - Preferred down payment amount (amount SHOULD be rounded to hundreds CZK/ 5 EUR) (example: valid downpayment 35 EUR, invalid downpayment 32 EUR)
++ financing (OrderFinancing, optional) - Information about form of financing ORDER application (for example Close-end Loan, Revolving Loan etc.). OPTIONAL.
++ deliveryType (enum, optional) - Type of service used for goods delivery
+    + 'PERSONAL_BRANCH'
+    + 'PERSONAL_PARTNER'
+    + 'ONLINE'
+    + 'DELIVERY_CARRIER'
++ reservationDate: '2017-07-15T00:00:00+02:00' (string,  optional) - Date and time until order is reserved. Until 'reservationDate' HCO will try to notify partner with Application notification about approval or rejection.After this date and time, e-shop does not guarantee items availability (if application processing is longer, it may endanger order fullfillment).
++ One Of
+    + merchantOrders (array[MerchantOrder], fixed-type, required) - Array of merchant orders (usually consists of one order)
+    + items (OrderItem,  required) - Information about particular item's of order (1x Iphone, 1x heaset, 2x protective glass covers...)
+
+##  MerchantOrder(object)
++ name: 'MALL' (string, required) - Merchant name, MUST NOT be longer than 60 characters
++ logo (File, optional) - Merchant's logo
++ businessId: 26204967 (number, optional) - Business identification number, MUST NOT be longer than 8 digits
++ url: 'www.mall.cz' (string, optional) - URL of the merchant's web site (e-shop), MUST NOT be longer than 1000 characters, MUST be valid URL
++ number: '22222222' (string, optional) - Internal order number of the merchant (e-shop, POS shop), MAY be provided for easier identification of application on partner's side, MUST NOT be longer than 100 characters.
++ items (array[OrderItem], fixed-type, required) - Order items, MUST contain at least one item
+
+##  OrderItem(object)
++ code: `EXC4677-1a` (string, optional) - Internal code for item (internal to e-shop). Used to better identify the item for future changes. Maximum 100 characters
++ ean: `888462064002` (string, optional) - EAN code. Maximum 32 characters
++ name: `iPhone 6s 32GB SpaceGray` (string, required) - Item name. String values longer than 60 characters will be shortened to 60 characters.
++ quantity: 1 (number, optional) - Item quantity. If empty, considered as 1.
++ type (enum, optional) - Item type
+    + 'PHYSICAL'
+    + 'DISCOUNT'
+    + 'SHIPPING_FEE'
+    + 'SALES_TAX'
+    + 'DIGITAL'
+    + 'GIFT_CARD'
+    + 'STORE_CREDIT'
+    + 'FEE'
+    + 'INSURANCE'
++ totalPrice (Amount, required) - Total price for all pieces (including VAT)
++ unitPrice (Amount, optional) - Price per one piece. If empty, automatically considered that `unitPrice` is `totalPrice` / `quantity`.
++ producer: 'Apple' (string, optional) - MUST NOT be longer than 50 characters.
++ image (File, optional) - Item image
+
+## OrderFinancing(object)
++ type (enum, required) - Financing type
+    + 'INSTALLMENT'
++ One Of
+    + installment (SettingsInstalment,  required) - Settings for INSTALLMENT Financing type. REQUIRED for INSTALLMENT financing type
+
+## SettingsInstalment(object)
++ preferredMonths: 6 (number,  optional) - Preferred number of installments (in months)
++ preferredInstallment (Amount,  optional) - Preferred down payment amount (amount should be rounded to hundreds CZK/ 5 EUR)
++ productCode: 'COCONL06' (string,  optional) - Product code (obtained from calculation result).
+
+## MerchantURLs(object)
++ approvedRedirect: `https://www.youreshop.cz` (string, optional) - URL of the partner used for redirection of the client back to partner website (from HCO gateway) after application approval. RECOMMENDED, MUST be valid URL according to [RFC 3986](https://tools.ietf.org/html/rfc3986). MUST NOT be longer than 1000 characters.
++ rejectedRedirect: `https://www.youreshop.cz/kosik` (string, optional) - URL of the partner used for redirection of the client back to partner website (from HCO gateway) after application rejection. RECOMMENDED. MUST be valid URL according to [RFC 3986](https://tools.ietf.org/html/rfc3986). MUST NOT be longer than 1000 characters.
++ notificationEndpoint: `https://www.youreshop.cz/order/AA234` (string, optional) - URL of the partner used as a notification endpoint for obtaining important updates about application (approval, rejection, cancelation, etc.). RECOMMENDED. MUST be valid URL according to [RFC 3986](https://tools.ietf.org/html/rfc3986). MUST NOT be longer than 1000 characters.
+
+## OriginationChannel(object)
++ type (enum, required) - Type of origination channel
+    + 'ONLINE'
++ online (MerchantURLs,  required) - Collection of partner's URLs used for redirection of a client back to a partner website or as a notification endpoint. REQUIRED for ONLINE channel type
+
+## OriginationContextRequest(object)
++ channel (OriginationChannel, required) - Origination channel
++ precheckIds (array[string], fixed-type, optional) - Array of all precheck ids related to this application. If you have run Precheck operation with this Client's data you SHOULD provide precheckId into this attribute. SHOULD be valid precheckId. See Precheck operations and their's response.
+
+## RedirectURL(object)
++ gatewayRedirectUrl (string,  required) - Gateway redirect URL. You SHOULD redirect client to this address for continuation of application approval process.
+
+## WorkflowStepScoringOneClickContract(object)
++ number: '5010160026' (string, required) - Number of the contract
++ result (string, required) - Viability of the contract
++ order: 1 (number, required) - Order of the contract in the list
+
+## WorkflowStepScoringOneClick(object)
++ contracts (array[WorkflowStepScoringOneClickContract], fixed-type, required) - List of available contracts (for scoring)
+
+## WorkflowStepScoring(object)
++ type (enum, required) - Type of the scoring workflow step
+    + 'ONE_CLICK'
++ One Of
+    + oneClick (WorkflowStepScoringOneClick, required) - Type of scoring workflow step
+
+## PersonVerification(object)
+
+## InstallmentProgramProductSet(object)
++ productSet: `COCHCONL` (string, required) - Product set
+
+## WorkflowStep(object)
++ code (enum, required) - Workflow code
+    + 'REDIRECT'
+    + 'PERSON_VERIFICATION'
+    + 'INSTALLMENT_PROGRAM_SELECTION'
+    + 'SCORING'
++ priority: 1 (number, required) - Identifier of workflow step's priority expressed as number (lowest number means highest priority)
++ mandatory: true (boolean, required) - Available workflow step for current application in application process.
++ One Of
+    + personVerification (PersonVerification, required) - Returned when it is possible to perform person verification - currently there are no special data for this case
+    + scoring (WorkflowStepScoring, required)
+    + redirect (RedirectURL, required) - Data for workflow step `REDIRECT`
+    + installmentProgramSelection (InstallmentProgramProductSet, required)
+
+## ApplicationBase(object)
++ id: `123e4567-e89b-12d3-a456-426655440000` (string,  required) - Primary identifier of the application
++ state (enum, required) - Application status
+    + 'CREATED'
+    + 'PRESCORED'
+    + 'APPROVED'
+    + 'VERIFICATION'
+    + 'ALTERNATIVE'
+    + 'CONFIRMED'
+    + 'REJECTED'
+    + 'CANCELLED'
++ workflowSteps (WorkflowStep,  optional) - Collection of application process actions available for current application state.
+
+
+:[Data Structures Common](common/src/includes/data-structures-common.apib)
