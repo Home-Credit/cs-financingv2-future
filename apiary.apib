@@ -480,7 +480,6 @@ SHOULD be valid with cash.amount atribute (invalid selected product is discarded
 + loanWallet (SettingsLoanWallet,  required) - Settings for LOAN_WALLET Financing type. REQUIRED for LOAN_WALLET financing type
 
 ## FinancedSubjectBase(object)
-<!-- + One Of -->
 + order (OrderBase, required) - Information about client's purchase of goods. REQUIRED for ORDER type of Financed subject
 <!--  + cash (CashBase, required) - Additional information about Cash requeirements. REQUIRED for CASH type of Financed subject -->
 
@@ -497,9 +496,8 @@ SHOULD be valid with cash.amount atribute (invalid selected product is discarded
     + 'ONLINE'
     + 'DELIVERY_CARRIER'
 + reservationDate: '2017-07-15T00:00:00+02:00' (string,  optional) - Date and time until order is reserved. Until 'reservationDate' HCO will try to notify partner with Application notification about approval or rejection.After this date and time, e-shop does not guarantee items availability (if application processing is longer, it may endanger order fullfillment).
-+ One Of
-    + merchantOrders (array[MerchantOrder], fixed-type, required) - Array of merchant orders (usually consists of one order)
-    + items (OrderItem,  required) - Information about particular item's of order (1x Iphone, 1x heaset, 2x protective glass covers...)
++ merchantOrders (array[MerchantOrder], fixed-type, required) - Array of merchant orders (usually consists of one order)
+<!--    + items (array[OrderItem], fixed-type, required) - Information about particular item's of order (1x Iphone, 1x heaset, 2x protective glass covers...) -->
 
 ##  MerchantOrder(object)
 + name: 'MALL' (string, required) - Merchant name, MUST NOT be longer than 60 characters
