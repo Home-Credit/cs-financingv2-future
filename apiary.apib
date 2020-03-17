@@ -180,7 +180,7 @@ There are 3 levels of error severity:
 - `downPayment` (number) – Value of down payment, usually set to 0 (minor units format is used - 100000 represents 1000, [ISO 4217](https://en.wikipedia.org/wiki/ISO_4217))
 - `checkSum` (string) – hashed message
 
-- e.g. `http://youreshop.cz?&applicationId=deb97dbd-cd18-4648-bc9d-f5d74f1d0776&applicationStatus=CONFIRMED&orderNumber=018884&orderStatus=TO_SHIP&downPayment=100000&checkSum=443E150D3406F6A8DC62C1DB224AFDD84FA9907071BB1AD9B2C7701031793662191501B26AADF3A31361341EA176C80B23D8A9A5E5B5219538289945FE0C20A7`
+- e.g. `http://youreshop.cz?&applicationId=123e4567-e89b-12d3-a456-426655440000&applicationStatus=CONFIRMED&orderNumber=018884&orderStatus=TO_SHIP&downPayment=100000&checkSum=443E150D3406F6A8DC62C1DB224AFDD84FA9907071BB1AD9B2C7701031793662191501B26AADF3A31361341EA176C80B23D8A9A5E5B5219538289945FE0C20A7`
 
 
 # Group Security
@@ -307,14 +307,16 @@ Create new *application*
 
 + Request Example_BAD_REQUEST (application/json;charset=UTF-8)
     + Attributes (ApplicationRequest)
-      + `financedSubject` (FinancedSubjectBase, required) - Subject of financing (for example Iphone purchase, loan for 20 000 CZK ...)
-        + `type`: `INVALID_TYPE` (enum, required) - Type of financed subject
-          + `ORDER`
-          + `CASH`
+        + `customer` (ApplicationCustomer)
+        + `originationContext` (OriginationContextRequest)
+        + `financedSubject` (FinancedSubjectBase)
+            + `type`: `INVALID_TYPE` (enum, required) - Type of financed subject
+                + `ORDER`
+                + `CASH`
 
 + Response 400(application/json;charset=UTF-8)
 
-        There was an error processing request
+        There was an error processing request - invalid financedSubject.type
 
     + Attributes (Errors)
 
@@ -340,7 +342,7 @@ If the request was successfully processed, you receive HTTP status code 204
   | 500         | INTERNAL_SERVER_ERROR | Unexpected condition was encountered and no more specific message is suitable    |
 
 + Parameters
-    + applicationId (string, required, `01-11b00a1ef1`)
+    + applicationId (string, required, `123e4567-e89b-12d3-a456-426655440000`)
 
 
 ### Mark order as shipped [PUT]
@@ -351,6 +353,7 @@ System notification. The whole *order* was shipped to the customer. Based on par
 + Response 204
 
 + Response 422(application/json;charset=UTF-8)
+
         Status change can not be processed
 
     + Attributes (Errors)
@@ -362,7 +365,7 @@ Services that should be developed and exposed by partner e-shops to allow HC asy
 > **ATTENTION:** This set of APIs is NOT exposed from HC. Instead, it should be developed by partner and accept calls specified below.
 
 
-## Application notification [{ApplicationRequest.originationContext.channel.online.notificationEndpoint}]
+## Application notification [/partner/notification/endpoint]
 We use this resource when there is a need to let you know about important changes within particular *application*. Namely in following situations:
 
 | Trigger                                                             | Corresponding `Application.status` | Corresponding `Application.financedSubject.order.status` | Expected reaction                                                      |
@@ -410,16 +413,17 @@ Notify partner about changes in application.
               + `PAID`
               + `CANCELLED`
               + `TERMINATED`
+            + downPayment (Amount)
+              + `value`: 150000 (number, required) - Amount in minor units (150000 represents 1 500) [ISO 4217](https://en.wikipedia.org/wiki/ISO_4217)
+              + `currency`: `CZK` (string, required) - Amount currency [ISO 4217](https://en.wikipedia.org/wiki/ISO_4217). Only local currency is allowed (CZK in Czech Republic and EUR in Slovakia).
 
 + Response 204
-        Notification accepted
 
 + Response 400 (application/json;charset=UTF-8)
         Can not process changes
 
 
 # Data Structures
-
 
 ## ApplicationRequest(object)
 + customer (ApplicationCustomer, optional) - Customer data. If known, customer data MAY be included for smoother approval process.
@@ -480,6 +484,10 @@ SHOULD be valid with cash.amount atribute (invalid selected product is discarded
 + loanWallet (SettingsLoanWallet,  required) - Settings for LOAN_WALLET Financing type. REQUIRED for LOAN_WALLET financing type
 
 ## FinancedSubjectBase(object)
+## FinancedSubjectBase(object)
++ type (enum, required) - Financed subject type
+  + `ORDER`
+  + `CASH`
 + order (OrderBase, required) - Information about client's purchase of goods. REQUIRED for ORDER type of Financed subject
 <!--  + cash (CashBase, required) - Additional information about Cash requeirements. REQUIRED for CASH type of Financed subject -->
 
@@ -552,7 +560,7 @@ SHOULD be valid with cash.amount atribute (invalid selected product is discarded
 + precheckIds (array[string], fixed-type, optional) - Array of all precheck ids related to this application. If you have run Precheck operation with this Client's data you SHOULD provide precheckId into this attribute. SHOULD be valid precheckId. See Precheck operations and their's response.
 
 ## RedirectURL(object)
-+ gatewayRedirectUrl (string,  required) - Gateway redirect URL. You SHOULD redirect client to this address for continuation of application approval process.
++ gatewayRedirectUrl: `https://nasplatky.homecredit.cz` (string,  required) - Gateway redirect URL. You SHOULD redirect client to this address for continuation of application approval process.
 
 ## WorkflowStepScoringOneClickContract(object)
 + number: '5010160026' (string, required) - Number of the contract
@@ -599,6 +607,41 @@ SHOULD be valid with cash.amount atribute (invalid selected product is discarded
     + 'CANCELLED'
 + workflowSteps (WorkflowStep,  optional) - Collection of application process actions available for current application status.
 
+## NotificationRequest (object)
++ notificationContent (NotificationContent, required) - Content of the notification
++ sentDate: `2020-07-15T00:00:00+02:00` (string, required) - Time when notification was sent (uses [ISO 8601](https://en.wikipedia.org/wiki/ISO_8601) formatting)
++ checksum: `f61c69a259b702d564b2032e554984dec3b713ff7bdde17fcb727d403ea0d730816f46ad2bbc06a1914225d5dfba0396927dbf1b0698081814877b5486950a15` (string, required) - Message checksum - result of HMAC with SHA512 (secret key is used)
+
+## NotificationContent (object)
++ applicationId: `123e4567-e89b-12d3-a456-426655440000` (string,  required) - Primary identifier of the application
++ applicationStatus (enum, required) - Status of the application
+  + `CONFIRMED`
+  + `CREATED`
+  + `PRESCORED`
+  + `APPROVED`
+  + `VERIFICATION`
+  + `ALTERNATIVE`
+  + `REJECTED`
+  + `CANCELLED`
++ orderNumber: `AA234` (string, optional) - Order number (internal for e-shop)
++ orderStatus (enum, optional) - Status of the Order
+  + `IN_PROCESS`
+  + `TO_SHIP`
+  + `SHIPPED`
+  + `CHECKING_DELIVERY`
+  + `DELIVERED`
+  + `PAID`
+  + `CANCELLED`
+  + `TERMINATED`
++ cashStatus (enum, optional) - Status of the Cash loan
+  + `PROCESSING`
+  + `CANCELLED`
+  + `TO_PAY`
+  + `PAID`
++ downPayment (Amount, optional) - Current down payment set by a customer
++ notificationDate: `2020-07-15T00:00:00+02:00` (string, required) - Time when notification was created (uses [ISO 8601](https://en.wikipedia.org/wiki/ISO_8601) formatting)
++ sequenceNumber: 1 (number, required) - Notification sequence number
+
 ## Error (object)
 + code: `BAD_REQUEST` (string, required) - Unique internal error code
 + message: `Bad request` (string, required) - Human readable error description (non-localized)
@@ -619,7 +662,6 @@ SHOULD be valid with cash.amount atribute (invalid selected product is discarded
 + itemsPerPage: 10 (number, required) - number of items per page
 + nextPage: `transactions?sort=category&limit=10&after=30` (string, optional) - request to retrieve next page, if it exists and can be unambiguously specified
 + prevPage: `transactions?sort=category&limit=10&before=21` (string, optional) - request to retrieve previous page, if it exists and can be unambiguously specified
-
 
 ## Amount (object)
 + `value`: 13300 (number, required) - Amount in minor units (13300 represents 133) [ISO 4217](https://en.wikipedia.org/wiki/ISO_4217)
