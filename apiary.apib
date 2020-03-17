@@ -14,11 +14,11 @@ This online document describes Home Credit (HC) API for partners - the means for
 
 The aim of here described services is to allow customers the smooth running through the process of an online purchase or loan arrangement. The services that allow achieving this goal are divided into the following groups:
 
-| Group of services                  | Purpose                                                                                                                                                      |
-| ---                                | ---                                                                                                                                                          |
-| Security                           | Security rules and principles                                                                                                                                |
-| Application resources              | Resources that allows processing of *application* during its whole life cycle                                                                                |
-| Merchantsite resources             | Resources that should be developed and exposed by a partner to allow HC asynchronously inform it about important changes regarding particular *applications* |
+| Group of services                                           | Purpose                                                                                                                                                      |
+| ---                                                         | ---                                                                                                                                                          |
+| [Security](#reference/security)                             | Security rules and principles                                                                                                                                |
+| [Application resources](#reference/application-resources)   | Resources that allows processing of *application* during its whole life cycle                                                                                |
+| [Merchantsite resources](#reference/merchantsite-resources) | Resources that should be developed and exposed by a partner to allow HC asynchronously inform it about important changes regarding particular *applications* |
 
 ### Basic implementation
 Basic and minimum way how to implement HCO API is to at least implement:
@@ -30,7 +30,7 @@ Basic and minimum way how to implement HCO API is to at least implement:
     - Special URLs for customers that shows payment success or rejection (more info [here](#introduction/getting-started/parameters-added-to-your-return-urls)).
 1. [Application notification](#reference/merchantsite-resources/application-notification)
     - This endpoint has to be exposed on your side to allow HC back-end to asynchronously notify you about the important changes regarding particular applications.
-1. For `application` with `order`: [Mark order items as shipped](#reference/application-resources/mark-order-items-as-shipped)
+1. For `application` with `order`: [Mark order items as shipped](#reference/application-resources/mark-order-as-shipped)
     - HC does not start the process of financial compensation unless the `order` is marked as `SHIPPED`.
 
 <!-- diagram minimální implementace -->
@@ -154,9 +154,9 @@ There are 3 levels of error severity:
 ### Errors overview
 | Status code | Code                  | Explanation                                                                     | Message                                                                                                        |
 | ---         | ---                   | ---                                                                             | ---                                                                                                            |
-| 400         | INVALID_REQUEST       | Request was not well formatted (malformed request syntax, size too large, etc.) | (*Various messages possible*) e.g. Unsupported combination of application state and order state                  |
+| 400         | INVALID_REQUEST       | Request was not well formatted (malformed request syntax, size too large, etc.) | (*Various messages possible*) e.g. Unsupported combination of application status and order status              |
 | 404         | OBJECT_NOT_FOUND      | The requested resource could not be found                                       | (*Various messages possible*) e.g. Specified object was not found                                              |
-| 422         | NOT_ALLOWED           | Operation is not allowed (internal reason)                                      | (*Various messages possible*) e.g. Not allowed (other reason)                                                    |
+| 422         | NOT_ALLOWED           | Operation is not allowed (internal reason)                                      | (*Various messages possible*) e.g. Not allowed (other reason)                                                  |
 | 500         | INTERNAL_SERVER_ERROR | Unexpected condition was encountered and no more specific message is suitable   | (*Various messages possible*) e.g. Failed to parse given JSON                                                  |
 
 ## Formats
@@ -366,7 +366,7 @@ Services that should be developed and exposed by partner e-shops to allow HC asy
 We use this resource when there is a need to let you know about important changes within particular *application*. Namely in following situations:
 
 | Trigger                                                             | Corresponding `Application.status` | Corresponding `Application.financedSubject.order.status` | Expected reaction                                                      |
-| ---                                                                 | ---                                | ---                                                      |                                                                        |
+| ---                                                                 | ---                                | ---                                                      | ---                                                                    |
 | Application was approved (approval process is proceeding correctly) | APPROVED                           | IN_PROCESS                                               | Do not cancel customer's order prematurely                             |
 | Application was rejected                                            | REJECTED                           | CANCELLED                                                | You should probably cancel respective order and release reserved goods |
 | Application was cancelled (before delivery)                         | CANCELLED                          | CANCELLED                                                | You should probably cancel respective order and release reserved goods |
@@ -593,7 +593,7 @@ SHOULD be valid with cash.amount atribute (invalid selected product is discarded
 
 ## ApplicationBase(object)
 + id: `123e4567-e89b-12d3-a456-426655440000` (string,  required) - Primary identifier of the application
-+ state (enum, required) - Application status
++ status (enum, required) - Application status
     + 'CREATED'
     + 'PRESCORED'
     + 'APPROVED'
@@ -602,7 +602,7 @@ SHOULD be valid with cash.amount atribute (invalid selected product is discarded
     + 'CONFIRMED'
     + 'REJECTED'
     + 'CANCELLED'
-+ workflowSteps (WorkflowStep,  optional) - Collection of application process actions available for current application state.
++ workflowSteps (WorkflowStep,  optional) - Collection of application process actions available for current application status.
 
 ## Error (object)
 + code: `BAD_REQUEST` (string, required) - Unique internal error code
