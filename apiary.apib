@@ -477,13 +477,12 @@ SHOULD be valid with cash.amount atribute (invalid selected product is discarded
 ## CashFinancing(object)
 + type (enum, optional) - Financing type suitable for CASH application. If not provided, LOAN_WALLET type is used (by default).
     + 'LOAN_WALLET'
-+ One Of
-    + loanWallet (SettingsLoanWallet,  required) - Settings for LOAN_WALLET Financing type. REQUIRED for LOAN_WALLET financing type
++ loanWallet (SettingsLoanWallet,  required) - Settings for LOAN_WALLET Financing type. REQUIRED for LOAN_WALLET financing type
 
 ## FinancedSubjectBase(object)
-+ One Of
-  + cash (CashBase, required) - Additional information about Cash requeirements. REQUIRED for CASH type of Financed subject
-  + order (OrderBase, required) - Information about client's purchase of goods. REQUIRED for ORDER type of Financed subject
+<!-- + One Of -->
++ order (OrderBase, required) - Information about client's purchase of goods. REQUIRED for ORDER type of Financed subject
+<!--  + cash (CashBase, required) - Additional information about Cash requeirements. REQUIRED for CASH type of Financed subject -->
 
 ##  OrderBase(object)
 + number: '11111111' (string,  optional) - Identifier, specified by the partner (e-shop, POS shop, inetmediary). MAY be provided for easier identification of application on partner's side. MUST NOT be longer than 100 characters.
@@ -533,8 +532,7 @@ SHOULD be valid with cash.amount atribute (invalid selected product is discarded
 ## OrderFinancing(object)
 + type (enum, required) - Financing type
     + 'INSTALLMENT'
-+ One Of
-    + installment (SettingsInstalment,  required) - Settings for INSTALLMENT Financing type. REQUIRED for INSTALLMENT financing type
++ installment (SettingsInstalment,  required) - Settings for INSTALLMENT Financing type. REQUIRED for INSTALLMENT financing type
 
 ## SettingsInstalment(object)
 + preferredMonths: 6 (number,  optional) - Preferred number of installments (in months)
@@ -569,8 +567,7 @@ SHOULD be valid with cash.amount atribute (invalid selected product is discarded
 ## WorkflowStepScoring(object)
 + type (enum, required) - Type of the scoring workflow step
     + 'ONE_CLICK'
-+ One Of
-    + oneClick (WorkflowStepScoringOneClick, required) - Type of scoring workflow step
++ oneClick (WorkflowStepScoringOneClick, required) - Type of scoring workflow step
 
 ## PersonVerification(object)
 
@@ -586,9 +583,9 @@ SHOULD be valid with cash.amount atribute (invalid selected product is discarded
 + priority: 1 (number, required) - Identifier of workflow step's priority expressed as number (lowest number means highest priority)
 + mandatory: true (boolean, required) - Available workflow step for current application in application process.
 + One Of
+    + redirect (RedirectURL, required) - Data for workflow step `REDIRECT`
     + personVerification (PersonVerification, required) - Returned when it is possible to perform person verification - currently there are no special data for this case
     + scoring (WorkflowStepScoring, required)
-    + redirect (RedirectURL, required) - Data for workflow step `REDIRECT`
     + installmentProgramSelection (InstallmentProgramProductSet, required)
 
 ## ApplicationBase(object)
