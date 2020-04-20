@@ -418,6 +418,7 @@ Notify partner about changes in application.
 + Response 204
 
 + Response 400 (application/json;charset=UTF-8)
+
         Can not process changes
 
 
@@ -486,7 +487,7 @@ SHOULD be valid with cash.amount atribute (invalid selected product is discarded
   + `ORDER`
   + `CASH`
 + order (OrderBase, required) - Information about client's purchase of goods. REQUIRED for ORDER type of Financed subject
-<!--  + cash (CashBase, required) - Additional information about Cash requeirements. REQUIRED for CASH type of Financed subject -->
+
 
 ##  OrderBase(object)
 + number: '11111111' (string,  optional) - Identifier, specified by the partner (e-shop, POS shop, inetmediary). MAY be provided for easier identification of application on partner's side. MUST NOT be longer than 100 characters.
@@ -502,7 +503,7 @@ SHOULD be valid with cash.amount atribute (invalid selected product is discarded
     + 'DELIVERY_CARRIER'
 + reservationDate: '2017-07-15T00:00:00+02:00' (string,  optional) - Date and time until order is reserved. Until 'reservationDate' HCO will try to notify partner with Application notification about approval or rejection.After this date and time, e-shop does not guarantee items availability (if application processing is longer, it may endanger order fullfillment).
 + merchantOrders (array[MerchantOrder], fixed-type, required) - Array of merchant orders (usually consists of one order)
-<!--    + items (array[OrderItem], fixed-type, required) - Information about particular item's of order (1x Iphone, 1x heaset, 2x protective glass covers...) -->
+
 
 ##  MerchantOrder(object)
 + name: 'MALL' (string, required) - Merchant name, MUST NOT be longer than 60 characters
@@ -602,7 +603,7 @@ SHOULD be valid with cash.amount atribute (invalid selected product is discarded
     + 'CONFIRMED'
     + 'REJECTED'
     + 'CANCELLED'
-+ workflowSteps (WorkflowStep,  optional) - Collection of application process actions available for current application status.
++ workflowSteps (array[WorkflowStep], fixed-type, optional) - Collection of application process actions available for current application status.
 
 ## NotificationRequest (object)
 + notificationContent (NotificationContent, required) - Content of the notification
