@@ -208,7 +208,7 @@ To access our API, partner has to obtain *access token* first; this token is a s
 So the real example using curl will look like:
 
 ```
-curl -H "Authorization: Bearer secret_token" https://api.homecredit.cz/financing/v2/applications
+curl -H "Authorization: Bearer secret_token" https://api.homecredit.cz/financing/v3/applications
 ```
 
 - access token has limited time validity (for 2 hours). After it is expired, partner has to obtain new one using `/authentication/v1/partner` resource.
@@ -433,7 +433,7 @@ We fill the request with at least following information:
 - Hashed message (check sum)
 
 <!--
-> USEFUL NOTE: If you come to a conclusion it has been taking us unusually long time to send you particular notification, do not hesitate to use `GET /financing/v2/applications/{applicationId}` resource (where `{applicationId}` is the application ID you received in the response of `/financing/v2/applications` after its creation) to directly find out information you seek.
+> USEFUL NOTE: If you come to a conclusion it has been taking us unusually long time to send you particular notification, do not hesitate to use `GET /financing/v3/applications/{applicationId}` resource (where `{applicationId}` is the application ID you received in the response of `/financing/v2/applications` after its creation) to directly find out information you seek.
 -->
 
 ### Application notification [POST]
