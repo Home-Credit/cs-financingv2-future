@@ -547,7 +547,7 @@ Notify partner about changes in application.
 + variableSymbol: `1234567` (string,  optional) - Variable symbol (internal for e-shop) for reconciliation payment. MUST NOT be longer than 10 characters. If empty, `order.number` is used instead. If not provided or not usable (e.g. `order.number` contains only letters) Home Credit internal identifier is used.
 + totalPrice (Amount, required) - Total order amount, including VAT
 + preferredDownPayment (Amount, optional) - Preferred down payment amount (amount SHOULD be rounded to hundreds CZK/ 5 EUR) (example: valid downpayment 35 EUR, invalid downpayment 32 EUR)
-+ financings (array[OrderFinancing], fixed-type, optional) - Information about form of financing ORDER application. MAY be provided for orders with only single financing. MUST be provided for orders with multiple financings (typically more complicated product, for example Iphone purchase with future buyback) with at least amounts for particular `financing` parts.
++ financings (array[OrderFinancing], fixed-type, required) - Information about form of financing ORDER application. MUST be provided with at least `type` of `financing` for orders with only single financing. MUST be provided with at least `amount` and `type` for particular `financing` parts for orders with multiple financings (typically more complicated product, for example Iphone purchase with future buyback).
 + standard (StandardOrder, optional) - MUST be provided for `order.type` = `STANDARD`
 + brokered (BrokeredOrder, optional) - MUST be provided for `order.type` = `BROKERED`
 
