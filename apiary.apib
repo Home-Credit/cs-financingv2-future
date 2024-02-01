@@ -10,6 +10,9 @@ In case of any question, please contact our integration department  (integrace_e
 
 | Version        | Release | Release date | News |
 | ---            | ---     | ---          | ---  |
+| 3.2.1 (02/2024) | CS113    | 13.2.2024  | Two new resources were published:
+1. Cancel Application
+2. Get Application Detail |
 | 3.1.1 (01/2024) | CS112    | 17.1.2024  | New version of API |
 
 
@@ -335,7 +338,9 @@ Create a new *application*
 
 
 ## Mark order as shipped [/financing/v3/applications/{applicationId}/orders/ship]
-After approval and signing of the customer's contract, the partner receives information that everything is ready and can hand over the goods to the customer. The first option is to use the *Mark order as shipped* method, which indicates that the order has already been shipped to the customer.
+After the customer's contract is approved and signed, the partner is notified that all preparations are complete, enabling the transfer of goods to the customer. The initial step involves utilizing the *Mark Order as Shipped* method, signifying that the order has been dispatched to the customer.
+
+Upon confirmation with the customer, the order's price is remitted to the partner.
 
 Available for:
 | Application status | Order status |
@@ -343,13 +348,12 @@ Available for:
 | `CONFIRMED`        | `TO_SHIP`    |
 | `CONFIRMED`        | `SHIPPED` (in case partner tries to ship already shipped *order*, nothing changes)    |
 
-
 If the request was successfully processed, HTTP status code 204 is returned.
 
   In other cases, you receive one of the following errors:
   | Status code | Code                  | Explanation                                                                      |
   | ---         | ---                   | ---                                                                              |
-  | 400         | INVALID_REQUEST       | Request was not-well formatted (malformed request syntax, size too large, etc.)  |
+  | 400         | INVALID_REQUEST       | Request was not well-formatted (malformed request syntax, size too large, etc.)  |
   | 404         | OBJECT_NOT_FOUND      | The requested resource could not be found                                        |
   | 422         | NOT_SUPPORTED         | Resource has not supported status                                                |
   | 422         | UNPROCESSABLE         | The request was well-formed but was unable to be followed due to semantic errors |
@@ -371,14 +375,15 @@ When the whole *order* was shipped to the customer, partner use `/financing/v3/a
     + Attributes (Errors)
 
 ## Mark order as delivered [/financing/v3/applications/{applicationId}/orders/deliver]
-The second option for order delivery processing is to use the *Mark order as delivered* method, which indicates that the order has already been shipped and delivered to the customer.
+The alternative approach for processing order delivery involves employing the *Mark Order as Delivered* method. This method confirms that the order has been not only shipped but also successfully delivered to the customer.
+
+The partner receives the order's payment within a few days after the order is delivered.
 
 Available for:
 | Application status | Order status |
 | ---                | ---          |
 | `CONFIRMED`        | `TO_SHIP`    |
 | `CONFIRMED`        | `DELIVERED` (in case partner tries to deliver already delivered *order*, nothing changes)   |
-
 
 If the request was successfully processed, HTTP status code 204 is returned.
 
@@ -405,6 +410,83 @@ When the whole *order* was delivered to the customer, partner use `/financing/v3
         Status change can not be processed
 
     + Attributes (Errors)
+
+## Cancel application [/financing/v3/applications/{applicationId}/cancel]
+If the client decides against the full completion of the *order*, the partner has the option to employ this tool for initiating the cancellation of the application. This resource serves as a mechanism to efficiently handle and process cancellations in such instances.
+
+Available for:
+| Application status | Order status |
+| ---                | ---          |
+| `CREATED`          | `IN_PROCESS` |
+| `PRESCORED`        | `IN_PROCESS` |
+| `ALTERNATIVE`      | `IN_PROCESS` |
+| `APPROVED`         | `IN_PROCESS` |
+| `CONFIRMED`        | any except `PAID`  |
+| `CANCELLED`        | `CANCELLED`  (in this case nothing changes)  |
+
+If the request was successfully processed, HTTP status code 200 is returned.
+
+  In other cases, you receive one of the following errors:
+  | Status code | Code                  | Explanation                                                                      |
+  | ---         | ---                   | ---                                                                              |
+  | 400         | INVALID_REQUEST       | Request was not-well formatted (malformed request syntax, size too large, etc.)  |
+  | 404         | OBJECT_NOT_FOUND      | The requested resource could not be found                                        |
+  | 422         | NOT_SUPPORTED         | Resource has not supported status                                                |
+  | 422         | UNPROCESSABLE         | The request was well-formed but was unable to be followed due to semantic errors |
+  | 500         | INTERNAL_SERVER_ERROR | Unexpected condition was encountered and no more specific message is suitable    |
+
++ Parameters
+    + applicationId (string, required, `123e4567-e89b-12d3-a456-426655440000`)
+
+
+### Cancel application [PUT]
+Partner use `/financing/v3/applications/{applicationId}/cancel` resource where `{applicationId}` is the *application* ID received in the response of `/financing/v3/applications` after its creation.
+
++ Request Example_VALID_REQUEST (application/json;charset=UTF-8)
+    + Attributes (CancelApplicationRequest)
+
++ Response 200
+
++ Response 422(application/json;charset=UTF-8)
+
+        Status change can not be processed
+
+    + Attributes (Errors)
+
+
+## Get application detail [/financing/v3/applications/{applicationId}]
+A resource designed to retrieve information regarding the current status of a client's credit *application*.
+
+Available for:
+| Application status | Order status |
+| ---                | ---          |
+| any        | any    |
+
+If the request was successfully processed, HTTP status code 200 is returned.
+
+  In other cases, you receive one of the following errors:
+  | Status code | Code                  | Explanation                                                                      |
+  | ---         | ---                   | ---                                                                              |
+  | 404         | OBJECT_NOT_FOUND      | The requested resource could not be found                                        |
+  | 500         | INTERNAL_SERVER_ERROR | Unexpected condition was encountered and no more specific message is suitable    |
+
++ Parameters
+    + applicationId (string, required, `123e4567-e89b-12d3-a456-426655440000`)
+
+
+### Get Application [GET]
+Partner use `/financing/v3/applications/{applicationId}/orders/deliver` resource where `{applicationId}` is the *application* ID received in the response of `/financing/v3/applications` after its creation.
+
++ Response 200
+
+    + Attributes (GetApplicationDetail)
+
++ Response 422(application/json;charset=UTF-8)
+
+        Status change can not be processed
+
+    + Attributes (Errors)
+
 
 # Group Merchantsite resources
 Services that should be developed and exposed by partner e-shops to allow HC asynchronously inform these partner e-shops about important changes regarding particular *applications* and *orders*
@@ -632,17 +714,19 @@ Notify partner about changes in application.
 + status (enum, required) - Application status
     + `CREATED` - Application process has not started yet
     + `PRESCORED` - Preliminary approved
+    + `ALTERNATIVE` - Customer is approved by main scoring and alternative was offered to him
+    + `VERIFICATION` - Manual scoring review of application by Home Credit employee is in progress
     + `APPROVED` - Application is approved, contract signature process is in progress
-    + `VERIFICATION` - Manual review of application by Home Credit employee is in progress
-    + `ALTERNATIVE` - Alternative offered to customer
-    + `CONFIRMED` - Signed by customer, contract finalization by Home Credit employee is in progress
-    + `REJECTED`
-    + `CANCELLED`
+    + `CONFIRMED` - Signed by customer, contract finalization by Home Credit employee is in progress. Final status of application.
+    + `REJECTED` - Application was rejected for risk reasons. Final status of application.
+    + `CANCELLED` - Application was abandoned (either by client or partner). Final status of application.
 + workflowSteps (array[FinancingWorkflowStep], fixed-type, optional) - Collection of currently available application process actions.
 
 ## FinancingWorkflowStep(object)
 + code (enum, required) - Workflow code
-    + `REDIRECT`
+    + `REDIRECT` - Application is created, client should be redirected to Home Credit site
+    + `DELIVERY` - Application is finished, goods delivery is available
+    + `CANCELLATION` - Application is cancelled.
 + priority: 1 (number, required) - Identifier of workflow step's priority expressed as number (lowest number means highest priority)
 + mandatory: true (boolean, required) - Available workflow step for current application in application process.
 + redirect (RedirectURL, optional) - Data for workflow step `REDIRECT`
@@ -653,6 +737,37 @@ Notify partner about changes in application.
 ## InstallmentProgramProductSet(object)
 + productSet: `COCHCONL` (string, required) - Product set
 
+## CancelApplicationRequest(object)
++ reason (enum, optional) - Reason of cancellation. Considered as   APPLICATION_CANCELLED_OTHER if not set.
+    + `APPLICATION_CANCELLED_CARRIER_CHANGED`
+    + `APPLICATION_CANCELLED_CART_CONTENT_CHANGED`
+    + `APPLICATION_CANCELLED_BY_CUSTOMER`
+    + `APPLICATION_CANCELLED_BY_ERP`
+    + `APPLICATION_CANCELLED_EXPIRED`
+    + `APPLICATION_CANCELLED_UNFINISHED`
+    + `APPLICATION_CANCELLED_BY_ESHOP_RULES`
+    + `APPLICATION_CANCELLED_OTHER`
++ customReason (string, optional) - Specification of APPLICATION_CANCELLED_OTHER reason
+
+## GetApplicationDetail (ApplicationBase)
++ financedSubject (GetFinancedSubject, required)
+
+## GetFinancedSubject (object)
++ `type` (enum, required) - Financed subject type
+  + `ORDER`
++ order (GetOrder, required) - Information about customer's purchase of goods. REQUIRED for ORDER type of Financed subject
+
+## GetOrder (object)
++ status (enum, required) - Status of the Order
+  + `IN_PROCESS`
+  + `TO_SHIP` - Order delivery process should be started
+  + `SHIPPED` - Order delivery process has been started
+  + `CHECKING_DELIVERY` - Home Credit is verifying with the customer whether the order has been delivered successfully.
+  + `DELIVERED` - Order has been delivered succesfully
+  + `PAID` Order has been paid to partner
+  + `CANCELLED` - Order was cancelled before order delivery process was started
+  + `TERMINATED` - Order was cancelled during order delivery process
+
 ## NotificationRequest (object)
 + notificationContent (NotificationContent, required) - Content of the notification
 + sentDate: `2020-07-15T00:00:00+02:00` (string, required) - Time when notification was sent (uses [ISO 8601](https://en.wikipedia.org/wiki/ISO_8601) formatting)
@@ -661,24 +776,24 @@ Notify partner about changes in application.
 ## NotificationContent(object)
 + applicationId: `123e4567-e89b-12d3-a456-426655440000` (string,  required) - Primary identifier of the application
 + applicationStatus (enum, required) - Status of the application
-  + `CONFIRMED`
-  + `CREATED`
-  + `PRESCORED`
-  + `APPROVED`
-  + `VERIFICATION`
-  + `ALTERNATIVE`
-  + `REJECTED`
-  + `CANCELLED`
+    + `CREATED` - Application process has not started yet
+    + `PRESCORED` - Preliminary approved
+    + `ALTERNATIVE` - Customer is approved by main scoring and alternative was offered to him
+    + `VERIFICATION` - Manual scoring review of application by Home Credit employee is i(n progress
+    + `APPROVED` - Application is approved, contract signature process is in progress
+    + `CONFIRMED` - Signed by customer, contract finalization by Home Credit employee is in progress. Final status of application.
+    + `REJECTED` - Application was rejected for risk reasons. Final status of application.
+    + `CANCELLED` - Application was abandoned (either by client or partner). Final status of application.)
 + orderNumber: `AA234` (string, optional) - Order number (internal for e-shop)
 + orderStatus (enum, optional) - Status of the Order
-  + `IN_PROCESS`
-  + `TO_SHIP`
-  + `SHIPPED`
-  + `CHECKING_DELIVERY`
-  + `DELIVERED`
-  + `PAID`
-  + `CANCELLED`
-  + `TERMINATED`
+    + `IN_PROCESS`
+    + `TO_SHIP` - Order delivery process should be started
+    + `SHIPPED` - Order delivery process has been started
+    + `CHECKING_DELIVERY` - Home Credit is verifying with the customer whether the order has been delivered successfully.
+    + `DELIVERED` - Order has been delivered succesfully
+    + `PAID` Order has been paid to partner
+    + `CANCELLED` - Order was cancelled before order delivery process was started
+    + `TERMINATED` - Order was cancelled during order delivery process
 + downPayment (Amount, optional) - Current down payment set by a customer
 + notificationDate: `2020-07-15T00:00:00+02:00` (string, required) - Time when notification was created (uses [ISO 8601](https://en.wikipedia.org/wiki/ISO_8601) formatting)
 + sequenceNumber: 1 (number, required) - Notification sequence number
